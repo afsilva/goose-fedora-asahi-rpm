@@ -1,0 +1,39 @@
+FROM fedora:42
+
+# Build args for uid/gid mapping when bind-mounting from macOS
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+ARG USERNAME=builder
+
+# Core tooling + desktop build deps + rpm maker deps
+RUN dnf -y update && dnf -y install \
+    bash ca-certificates curl git which findutils file tar xz bzip2 unzip zip \
+    make cmake ninja-build gcc gcc-c++ pkgconfig perl-core python3 \
+    rust cargo \
+    nodejs npm \
+    clang clang-devel llvm llvm-devel \
+    libxcb-devel dbus-devel libsecret-devel nss-devel atk-devel at-spi2-atk-devel \
+    gtk3-devel libdrm-devel mesa-libgbm-devel libxshmfence-devel alsa-lib-devel \
+    pango-devel cairo-devel cups-devel libXcomposite-devel libXcursor-devel \
+    libXdamage-devel libXext-devel libXi-devel libXrandr-devel libXtst-devel \
+    libappindicator-gtk3-devel \
+    rpm-build rpmdevtools rpmlint \
+    fakeroot dpkg dpkg-dev \
+    ruby ruby-devel rubygems \
+    && dnf clean all
+
+# Install pnpm explicitly (corepack is not always available in Fedora nodejs packages)
+RUN npm install -g pnpm@10.30.0
+
+# FPM for robust RPM creation from prebuilt app directories
+RUN gem install --no-document fpm
+
+# non-root user to avoid root-owned artifacts on mounted workspace
+RUN groupadd -g ${GROUP_ID} ${USERNAME} || true && \
+    useradd -m -u ${USER_ID} -g ${GROUP_ID} -s /bin/bash ${USERNAME} || true
+
+WORKDIR /work
+USER ${USERNAME}
+
+# Default command provides interactive shell; scripts can override.
+CMD ["/bin/bash"]

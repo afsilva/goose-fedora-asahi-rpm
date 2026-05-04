@@ -1,0 +1,14 @@
+# Upstream Goose source checkout (do not commit)
+/source/goose/
+/source/goose-build-worktree/
+
+# Build outputs
+/dist/*.rpm
+
+# Keep folder placeholders
+!dist/.gitkeep
+
+# Local metadata/temp
+.DS_Store
+*.log
+*.tmp
