@@ -43,8 +43,8 @@ chmod +x scripts/build-goose-desktop-rpm.sh
 
 The script auto-increments the RPM release number for a given Goose desktop version by inspecting existing files in `dist/`, and injects it into the generated SPEC file `Release:` field used by `rpmbuild`:
 
-- `goose-desktop-1.33.0-1.aarch64.rpm`
-- `goose-desktop-1.33.0-2.aarch64.rpm`
+- `goose-desktop-1.33.0-1.fc44.aarch64.rpm`
+- `goose-desktop-1.33.0-2.fc44.aarch64.rpm`
 - ...
 
 So each subsequent build of the same version produces the next release (e.g. `-2`, `-3`, etc.).
@@ -105,11 +105,11 @@ Run rpmlint using the builder container:
 ```bash
 podman run --rm \
   -v "$(pwd)/dist:/dist:Z" \
-  localhost/goose-fedora-desktop-builder:42 \
-  bash -lc 'rpmlint /dist/goose-desktop-1.33.0-1.aarch64.rpm'
+  localhost/goose-fedora-desktop-builder:44 \
+  bash -lc 'rpmlint /dist/goose-desktop-1.33.0-1.fc44.aarch64.rpm'
 ```
 
-Current status of `goose-desktop-1.33.0-1.aarch64.rpm`:
+Current status of `goose-desktop-1.33.0-1.fc44.aarch64.rpm`:
 
 - ✅ Fixed major packaging issues (permissions, license metadata, non-standard prefix/path issues)
 - ⚠️ Remaining rpmlint warnings expected for bundled Electron binaries
@@ -117,6 +117,18 @@ Current status of `goose-desktop-1.33.0-1.aarch64.rpm`:
   - `missing-call-to-setgroups-before-setuid /usr/lib/goose/chrome-sandbox`
 
 This last error is tied to Chromium/Electron sandbox binary behavior and resolving it would require altering/removing `chrome-sandbox`, which can impact runtime sandboxing behavior. The build keeps the upstream runtime behavior intact.
+
+## Release checklist
+
+1. Build RPM:
+   - `./scripts/build-goose-desktop-rpm.sh --jobs 1 --keep-artifacts`
+2. Validate metadata:
+   - `rpm -qip dist/goose-desktop-*.aarch64.rpm`
+3. Validate payload:
+   - `rpm -qlp dist/goose-desktop-*.aarch64.rpm`
+4. Optional lint:
+   - run `rpmlint` command above
+5. Upload artifact to GitHub Release tag.
 
 ## If build gets killed (OOM)
 

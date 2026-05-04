@@ -207,7 +207,7 @@ podman run --rm -i \
 
     cd desktop
 
-    # Build packaged Linux app directory first (more reliable), then create RPM via fpm.
+    # Build packaged Linux app directory first, then create RPM via generated SPEC + rpmbuild.
     pnpm run package
 
     APP_DIR=$(find out -maxdepth 1 -type d -name "Goose-linux-*" | head -n1)
