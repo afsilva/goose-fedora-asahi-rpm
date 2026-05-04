@@ -1,4 +1,4 @@
-FROM fedora:42
+FROM fedora:44
 
 # Build args for uid/gid mapping when bind-mounting from macOS
 ARG USER_ID=1000

@@ -14,6 +14,8 @@ It is intentionally separate from Goose source code.
 
 Produce Fedora Asahi-compatible (`aarch64`) Goose Desktop RPMs using Podman on macOS.
 
+Builder base image: official `fedora:44` container.
+
 ## Prerequisites (macOS)
 
 ```bash
@@ -37,6 +39,18 @@ chmod +x scripts/build-goose-desktop-rpm.sh
 - `--keep-artifacts` — keep existing `dist/*.rpm` before exporting new artifacts
 - `--jobs N` — set build parallelism inside container (default: `1`)
 
+### RPM release iteration auto-increment
+
+The script auto-increments the RPM release number for a given Goose desktop version by inspecting existing files in `dist/`, and injects it into the generated SPEC file `Release:` field used by `rpmbuild`:
+
+- `goose-desktop-1.33.0-1.aarch64.rpm`
+- `goose-desktop-1.33.0-2.aarch64.rpm`
+- ...
+
+So each subsequent build of the same version produces the next release (e.g. `-2`, `-3`, etc.).
+
+To preserve this history, use `--keep-artifacts`. If you remove prior files, numbering restarts from `-1`.
+
 Examples:
 
 ```bash
@@ -52,7 +66,7 @@ Examples:
 4. Creates a temporary clean Goose worktree for build isolation
 5. Builds `goosed` (Rust)
 6. Packages Goose Desktop (Electron)
-7. Builds an `aarch64` RPM via `fpm`
+7. Generates a SPEC file and builds an `aarch64` RPM via `rpmbuild`
 8. Copies RPM artifacts into `dist/`
 9. Cleans temporary worktree
 
@@ -61,6 +75,17 @@ Examples:
 - `dist/*.rpm`
 
 These are the artifacts to deploy on Fedora Asahi.
+
+## Installed paths and desktop integration
+
+The RPM installs:
+
+- App bundle: `/usr/lib/goose`
+- Launcher command: `/usr/bin/goose`
+- GNOME desktop entry: `/usr/share/applications/goose.desktop`
+- App icon: `/usr/share/icons/hicolor/512x512/apps/goose.png`
+
+This makes Goose discoverable in GNOME's application list/search.
 
 ## Notes
 

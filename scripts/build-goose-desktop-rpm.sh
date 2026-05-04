@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/aaif-goose/goose.git"
-IMAGE_NAME="goose-fedora-desktop-builder:42"
+IMAGE_NAME="goose-fedora-desktop-builder:44"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -136,6 +136,24 @@ podman build \
   -f "${CONTAINERFILE}" \
   "${PROJECT_ROOT}"
 
+# Compute next RPM iteration from existing dist artifacts before optional cleanup.
+DESKTOP_VERSION="$(sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "${GOOSE_DIR}/ui/desktop/package.json" | head -n1)"
+if [[ -z "${DESKTOP_VERSION}" ]]; then
+  echo "Could not determine Goose desktop version from ${GOOSE_DIR}/ui/desktop/package.json"
+  exit 1
+fi
+
+MAX_ITERATION=0
+for rpm in "${DIST_DIR}/goose-desktop-${DESKTOP_VERSION}-"*.aarch64.rpm; do
+  [[ -e "$rpm" ]] || continue
+  iter="$(basename "$rpm" | sed -E "s/^goose-desktop-${DESKTOP_VERSION}-([0-9]+)\.aarch64\.rpm$/\1/")"
+  if [[ "$iter" =~ ^[0-9]+$ ]] && (( iter > MAX_ITERATION )); then
+    MAX_ITERATION="$iter"
+  fi
+done
+RPM_ITERATION=$((MAX_ITERATION + 1))
+log "Using RPM release iteration: ${RPM_ITERATION} (version ${DESKTOP_VERSION})"
+
 if [[ "$KEEP_ARTIFACTS" == false ]]; then
   rm -f "${DIST_DIR}"/*.rpm
 else
@@ -159,7 +177,9 @@ podman run --rm -i \
   -e LIBCLANG_PATH="/usr/lib64" \
   -e npm_config_jobs="${BUILD_JOBS}" \
   -e npm_config_loglevel=warn \
+  -e RPM_ITERATION="${RPM_ITERATION}" \
   -v "${WORKTREE_DIR}":/work/goose:Z \
+  -v "${DIST_DIR}":/work/dist:Z \
   -w /work/goose \
   "${IMAGE_NAME}" \
   bash -lc '
@@ -216,22 +236,97 @@ podman run --rm -i \
       chmod 0755 "${APP_DIR}/resources/images/prepare.sh"
     fi
 
-    fpm -s dir -t rpm \
-      -n goose-desktop \
-      -v "${APP_VERSION}" \
-      --iteration 1 \
-      --architecture aarch64 \
-      --description "Desktop AI agent application" \
-      --license "Apache-2.0" \
-      --url "https://goose-docs.ai/" \
-      --maintainer "AAIF (Agentic AI Foundation)" \
-      --rpm-os linux \
-      --prefix /usr/lib/goose \
-      -C "${APP_DIR}" \
-      --rpm-rpmbuild-define "_build_id_links none" \
-      .
+    RPM_TOPDIR="$(pwd)/out/rpmbuild"
+    mkdir -p "${RPM_TOPDIR}/"{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
-    mv -f ./*.rpm out/make/rpm/aarch64/
+    # Ensure license file is present in payload for %license
+    if [[ -f "/work/goose/LICENSE" && ! -f "${APP_DIR}/LICENSE" ]]; then
+      cp -f "/work/goose/LICENSE" "${APP_DIR}/LICENSE"
+    fi
+
+    # Build source tarball with stable top-level directory for rpmbuild %setup
+    SRCROOT="${RPM_TOPDIR}/SOURCES/goose-desktop-${APP_VERSION}"
+    rm -rf "${SRCROOT}"
+    mkdir -p "${SRCROOT}"
+    cp -a "${APP_DIR}"/. "${SRCROOT}/"
+    tar -C "${RPM_TOPDIR}/SOURCES" -czf "${RPM_TOPDIR}/SOURCES/goose-desktop-${APP_VERSION}.tar.gz" "goose-desktop-${APP_VERSION}"
+
+    cat > "${RPM_TOPDIR}/SPECS/goose-desktop.spec" <<EOF
+Name:           goose-desktop
+Version:        ${APP_VERSION}
+Release:        ${RPM_ITERATION}%{?dist}
+Summary:        Desktop AI agent application
+License:        Apache-2.0
+URL:            https://goose-docs.ai/
+BuildArch:      aarch64
+Source0:        %{name}-%{version}.tar.gz
+
+%description
+Goose Desktop application bundle for Fedora Asahi.
+
+%prep
+%setup -q -n %{name}-%{version}
+
+%build
+
+%install
+rm -rf %{buildroot}
+mkdir -p %{buildroot}/usr/lib/goose
+cp -a * %{buildroot}/usr/lib/goose/
+
+# CLI/launcher wrapper for Linux conventions
+mkdir -p %{buildroot}/usr/bin
+cat > %{buildroot}/usr/bin/goose <<'WRAP'
+#!/bin/sh
+exec /usr/lib/goose/Goose "$@"
+WRAP
+chmod 0755 %{buildroot}/usr/bin/goose
+
+# Desktop integration for GNOME app launcher
+mkdir -p %{buildroot}/usr/share/applications
+cat > %{buildroot}/usr/share/applications/goose.desktop <<'DESKTOP'
+[Desktop Entry]
+Name=Goose
+Comment=Goose Desktop AI agent
+Exec=/usr/bin/goose
+Icon=goose
+Terminal=false
+Type=Application
+Categories=Utility;Development;
+StartupNotify=true
+DESKTOP
+
+# App icon for menu/launcher
+mkdir -p %{buildroot}/usr/share/icons/hicolor/512x512/apps
+if [ -f %{buildroot}/usr/lib/goose/resources/images/icon-512.png ]; then
+  cp -f %{buildroot}/usr/lib/goose/resources/images/icon-512.png \
+    %{buildroot}/usr/share/icons/hicolor/512x512/apps/goose.png
+elif [ -f %{buildroot}/usr/lib/goose/resources/images/icon.png ]; then
+  cp -f %{buildroot}/usr/lib/goose/resources/images/icon.png \
+    %{buildroot}/usr/share/icons/hicolor/512x512/apps/goose.png
+fi
+
+%files
+/usr/lib/goose
+/usr/bin/goose
+/usr/share/applications/goose.desktop
+/usr/share/icons/hicolor/512x512/apps/goose.png
+
+%changelog
+* $(date "+%a %b %d %Y") Goose Fedora Asahi Builder <noreply@example.com> - ${APP_VERSION}-${RPM_ITERATION}
+- Automated build
+EOF
+
+    rpmbuild -bb \
+      --define "_topdir ${RPM_TOPDIR}" \
+      --define "_build_id_links none" \
+      --define "debug_package %{nil}" \
+      --define "_enable_debug_packages 0" \
+      --define "__os_install_post %{nil}" \
+      "${RPM_TOPDIR}/SPECS/goose-desktop.spec"
+
+    mkdir -p out/make/rpm/aarch64
+    find "${RPM_TOPDIR}/RPMS/aarch64" -type f -name '*.rpm' -exec cp -f {} out/make/rpm/aarch64/ \;
   '
 
 log "Collecting RPM artifacts"
