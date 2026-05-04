@@ -67,6 +67,12 @@ These are the artifacts to deploy on Fedora Asahi.
 - The build is pinned to `aarch64` and fails fast on other architectures.
 - Some non-fatal platform/engine warnings from pnpm may appear during install/package.
 
+## Rebuild prompts
+
+If you want someone else (or an AI coding agent) to recreate/maintain this project, use the templates in:
+
+- `PROMPTS.md`
+
 ## If build gets killed (OOM)
 
 If you see `Killed` during `cargo build`, increase Podman VM resources:
