@@ -88,3 +88,9 @@ Then rerun with low parallelism:
 ```bash
 ./scripts/build-goose-desktop-rpm.sh --jobs 1
 ```
+
+
+## License
+
+This project is open source under the **Apache License 2.0** (same as Goose).
+See [LICENSE](LICENSE).
