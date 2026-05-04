@@ -201,15 +201,32 @@ podman run --rm -i \
 
     mkdir -p out/make/rpm/aarch64
 
+    # rpmlint hygiene adjustments that do not alter runtime behavior
+    rm -f "${APP_DIR}/resources/bin/.gitkeep" || true
+    find "${APP_DIR}" -type f -perm -002 -exec chmod o-w {} +
+    find "${APP_DIR}" -type f -perm -020 -exec chmod g-w {} +
+
+    # rpmlint compatibility fixes for bundled Electron assets
+    if [[ -f "${APP_DIR}/chrome-sandbox" ]]; then
+      chmod u-s,g-s "${APP_DIR}/chrome-sandbox"
+      chmod 0755 "${APP_DIR}/chrome-sandbox"
+    fi
+    if [[ -f "${APP_DIR}/resources/images/prepare.sh" ]]; then
+      sed -i "1s|^#! */usr/bin/env sh$|#!/bin/sh|" "${APP_DIR}/resources/images/prepare.sh"
+      chmod 0755 "${APP_DIR}/resources/images/prepare.sh"
+    fi
+
     fpm -s dir -t rpm \
-      -n Goose \
+      -n goose-desktop \
       -v "${APP_VERSION}" \
+      --iteration 1 \
       --architecture aarch64 \
-      --description "Goose Desktop App" \
+      --description "Desktop AI agent application" \
+      --license "Apache-2.0" \
       --url "https://goose-docs.ai/" \
       --maintainer "AAIF (Agentic AI Foundation)" \
       --rpm-os linux \
-      --prefix /opt/Goose \
+      --prefix /usr/lib/goose \
       -C "${APP_DIR}" \
       --rpm-rpmbuild-define "_build_id_links none" \
       .

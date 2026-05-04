@@ -73,6 +73,26 @@ If you want someone else (or an AI coding agent) to recreate/maintain this proje
 
 - `PROMPTS.md`
 
+## RPM linting (rpmlint)
+
+Run rpmlint using the builder container:
+
+```bash
+podman run --rm \
+  -v "$(pwd)/dist:/dist:Z" \
+  localhost/goose-fedora-desktop-builder:42 \
+  bash -lc 'rpmlint /dist/goose-desktop-1.33.0-1.aarch64.rpm'
+```
+
+Current status of `goose-desktop-1.33.0-1.aarch64.rpm`:
+
+- ✅ Fixed major packaging issues (permissions, license metadata, non-standard prefix/path issues)
+- ⚠️ Remaining rpmlint warnings expected for bundled Electron binaries
+- ⚠️ Remaining rpmlint error:
+  - `missing-call-to-setgroups-before-setuid /usr/lib/goose/chrome-sandbox`
+
+This last error is tied to Chromium/Electron sandbox binary behavior and resolving it would require altering/removing `chrome-sandbox`, which can impact runtime sandboxing behavior. The build keeps the upstream runtime behavior intact.
+
 ## If build gets killed (OOM)
 
 If you see `Killed` during `cargo build`, increase Podman VM resources:
