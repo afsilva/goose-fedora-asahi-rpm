@@ -146,7 +146,7 @@ fi
 MAX_ITERATION=0
 for rpm in "${DIST_DIR}/goose-desktop-${DESKTOP_VERSION}-"*.aarch64.rpm; do
   [[ -e "$rpm" ]] || continue
-  iter="$(basename "$rpm" | sed -E "s/^goose-desktop-${DESKTOP_VERSION}-([0-9]+)\.aarch64\.rpm$/\1/")"
+  iter="$(basename "$rpm" | sed -E "s/^goose-desktop-${DESKTOP_VERSION}-([0-9]+)(\.[^.]+)?\.aarch64\.rpm$/\1/")"
   if [[ "$iter" =~ ^[0-9]+$ ]] && (( iter > MAX_ITERATION )); then
     MAX_ITERATION="$iter"
   fi
@@ -197,10 +197,10 @@ podman run --rm -i \
     node --version
     pnpm --version
 
-    cargo build --release -j "${CARGO_BUILD_JOBS}" -p goose-server
+    cargo build --release -j "${CARGO_BUILD_JOBS}" -p goose-cli --bin goose
 
     mkdir -p ui/desktop/src/bin
-    cp target/release/goosed ui/desktop/src/bin/
+    cp target/release/goose ui/desktop/src/bin/
 
     cd ui
     pnpm install --frozen-lockfile --network-concurrency "${CARGO_BUILD_JOBS}"
