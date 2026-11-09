@@ -103,13 +103,14 @@ If you want someone else (or an AI coding agent) to recreate/maintain this proje
 Run rpmlint using the builder container:
 
 ```bash
+RPM="$(find dist -maxdepth 1 -name 'goose-desktop-*.aarch64.rpm' -print | sort -V | tail -n1)"
 podman run --rm \
   -v "$(pwd)/dist:/dist:Z" \
   localhost/goose-fedora-desktop-builder:44 \
-  bash -lc 'rpmlint /dist/goose-desktop-1.33.0-1.fc44.aarch64.rpm'
+  bash -lc "rpmlint /dist/$(basename "$RPM")"
 ```
 
-Current status of `goose-desktop-1.33.0-1.fc44.aarch64.rpm`:
+Current expected status for Electron-based Goose Desktop RPMs:
 
 - ✅ Fixed major packaging issues (permissions, license metadata, non-standard prefix/path issues)
 - ⚠️ Remaining rpmlint warnings expected for bundled Electron binaries
@@ -136,7 +137,7 @@ If you see `Killed` during `cargo build`, increase Podman VM resources:
 
 ```bash
 podman machine stop
-podman machine set --cpus 6 --memory 12288 --disk-size 80
+podman machine set --cpus 6 --memory 20480 --disk-size 100
 podman machine start
 ```
 
