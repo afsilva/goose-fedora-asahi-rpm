@@ -59,7 +59,7 @@ Create scripts/build-goose-desktop-rpm.sh with these behaviors:
 Use this to recreate the container reliably.
 
 ```text
-Create container/Containerfile based on official Fedora image (fedora:44).
+Create container/Containerfile based on official Fedora image (fedora:45).
 Install all dependencies needed to build Goose desktop RPM on aarch64, including:
 - Core build tools: make, gcc, g++, pkgconfig, python3, cmake, ninja
 - Rust toolchain: rust, cargo

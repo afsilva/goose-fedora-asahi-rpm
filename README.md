@@ -14,7 +14,7 @@ It is intentionally separate from Goose source code.
 
 Produce Fedora Asahi-compatible (`aarch64`) Goose Desktop RPMs using Podman on macOS.
 
-Builder base image: official `fedora:44` container.
+Builder base image: official `fedora:45` container.
 
 ## Prerequisites (macOS)
 
@@ -43,8 +43,8 @@ chmod +x scripts/build-goose-desktop-rpm.sh
 
 The script auto-increments the RPM release number for a given Goose desktop version by inspecting existing files in `dist/`, and injects it into the generated SPEC file `Release:` field used by `rpmbuild`:
 
-- `goose-desktop-1.33.0-1.fc44.aarch64.rpm`
-- `goose-desktop-1.33.0-2.fc44.aarch64.rpm`
+- `goose-desktop-1.58.0-1.fc45.aarch64.rpm`
+- `goose-desktop-1.58.0-2.fc45.aarch64.rpm`
 - ...
 
 So each subsequent build of the same version produces the next release (e.g. `-2`, `-3`, etc.).
@@ -106,7 +106,7 @@ Run rpmlint using the builder container:
 RPM="$(find dist -maxdepth 1 -name 'goose-desktop-*.aarch64.rpm' -print | sort -V | tail -n1)"
 podman run --rm \
   -v "$(pwd)/dist:/dist:Z" \
-  localhost/goose-fedora-desktop-builder:44 \
+  localhost/goose-fedora-desktop-builder:45 \
   bash -lc "rpmlint /dist/$(basename "$RPM")"
 ```
 

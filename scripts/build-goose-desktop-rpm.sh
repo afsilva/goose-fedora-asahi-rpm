@@ -2,7 +2,8 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/aaif-goose/goose.git"
-IMAGE_NAME="goose-fedora-desktop-builder:44"
+FEDORA_VERSION="45"
+IMAGE_NAME="goose-fedora-desktop-builder:${FEDORA_VERSION}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -114,11 +115,20 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     podman machine init
     MACHINE_NAME="podman-machine-default"
   else
-    # Prefer default machine if present, else pick first available machine.
-    if printf '%s\n' "${MACHINE_LIST}" | grep -qx 'podman-machine-default'; then
-      MACHINE_NAME="podman-machine-default"
-    else
-      MACHINE_NAME="$(printf '%s\n' "${MACHINE_LIST}" | head -n1)"
+    MACHINE_NAME=""
+    while IFS= read -r candidate; do
+      if [[ "$(podman machine inspect "${candidate}" --format '{{.State}}' 2>/dev/null || true)" == "running" ]]; then
+        MACHINE_NAME="${candidate}"
+        break
+      fi
+    done <<< "${MACHINE_LIST}"
+
+    if [[ -z "${MACHINE_NAME}" ]]; then
+      if printf '%s\n' "${MACHINE_LIST}" | grep -qx 'podman-machine-default'; then
+        MACHINE_NAME="podman-machine-default"
+      else
+        MACHINE_NAME="$(printf '%s\n' "${MACHINE_LIST}" | head -n1)"
+      fi
     fi
   fi
 
@@ -144,9 +154,9 @@ if [[ -z "${DESKTOP_VERSION}" ]]; then
 fi
 
 MAX_ITERATION=0
-for rpm in "${DIST_DIR}/goose-desktop-${DESKTOP_VERSION}-"*.aarch64.rpm; do
+for rpm in "${DIST_DIR}/goose-desktop-${DESKTOP_VERSION}-"*.fc"${FEDORA_VERSION}".aarch64.rpm; do
   [[ -e "$rpm" ]] || continue
-  iter="$(basename "$rpm" | sed -E "s/^goose-desktop-${DESKTOP_VERSION}-([0-9]+)(\.[^.]+)?\.aarch64\.rpm$/\1/")"
+  iter="$(basename "$rpm" | sed -E "s/^goose-desktop-${DESKTOP_VERSION}-([0-9]+)\.fc${FEDORA_VERSION}\.aarch64\.rpm$/\1/")"
   if [[ "$iter" =~ ^[0-9]+$ ]] && (( iter > MAX_ITERATION )); then
     MAX_ITERATION="$iter"
   fi
