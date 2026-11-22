@@ -42,14 +42,17 @@ Create scripts/build-goose-desktop-rpm.sh with these behaviors:
 5) On macOS, ensure Podman machine exists and is running.
 6) Build Fedora builder image from container/Containerfile.
 7) Build in a temporary git worktree (avoid dirtying source checkout).
-8) Build goose-server in release mode with low-memory defaults.
+8) Build the goose CLI/backend binary in release mode with low-memory defaults.
 9) Package desktop app (`pnpm run package`).
 10) Build RPM using generated SPEC + rpmbuild (not electron-forge maker-rpm).
 11) Force aarch64 only and fail on other architectures.
 12) Export RPM artifacts into dist/.
 13) Clean temporary worktree.
 14) Ensure script is compatible with macOS bash 3.2 (avoid mapfile).
-15) Auto-increment RPM `Release` via SPEC by inspecting existing dist artifacts for same Version.
+15) Auto-increment RPM `Release` via SPEC by inspecting existing dist artifacts for same Version and Fedora release.
+16) Enforce upstream Cargo.lock and pnpm-lock.yaml; install Node dependencies with --frozen-lockfile.
+17) Generate SHA256SUMS and BUILD-PROVENANCE.txt for release artifacts.
+18) Document security controls and trust boundaries in SECURITY.md without claiming formal certification.
 ```
 
 ---

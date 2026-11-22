@@ -64,7 +64,7 @@ Examples:
 2. Ensures Podman machine is initialized/running (macOS)
 3. Builds Fedora builder image from `container/Containerfile`
 4. Creates a temporary clean Goose worktree for build isolation
-5. Builds `goosed` (Rust)
+5. Builds the `goose` CLI/backend binary (Rust)
 6. Packages Goose Desktop (Electron)
 7. Generates a SPEC file and builds an `aarch64` RPM via `rpmbuild`
 8. Copies RPM artifacts into `dist/`
@@ -72,9 +72,11 @@ Examples:
 
 ## Output
 
-- `dist/*.rpm`
+- `dist/*.rpm` — Fedora Asahi package
+- `dist/SHA256SUMS` — SHA-256 integrity checksum
+- `dist/BUILD-PROVENANCE.txt` — upstream commit and build-environment provenance
 
-These are the artifacts to deploy on Fedora Asahi.
+These are the release artifacts for Fedora Asahi.
 
 ## Installed paths and desktop integration
 
@@ -127,9 +129,11 @@ This last error is tied to Chromium/Electron sandbox binary behavior and resolvi
    - `rpm -qip dist/goose-desktop-*.aarch64.rpm`
 3. Validate payload:
    - `rpm -qlp dist/goose-desktop-*.aarch64.rpm`
-4. Optional lint:
-   - run `rpmlint` command above
-5. Upload artifact to GitHub Release tag.
+4. Verify integrity and provenance:
+   - `cd dist && shasum -a 256 -c SHA256SUMS`
+   - review `dist/BUILD-PROVENANCE.txt`
+5. Run `rpmlint` using the command above.
+6. Upload the RPM, `SHA256SUMS`, and `BUILD-PROVENANCE.txt` to the GitHub Release tag.
 
 ## If build gets killed (OOM)
 
@@ -147,6 +151,10 @@ Then rerun with low parallelism:
 ./scripts/build-goose-desktop-rpm.sh --jobs 1
 ```
 
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting, trust boundaries, artifact verification, and the project's OWASP Top 10 alignment. This is a documented risk-control mapping, not a claim of formal OWASP certification.
 
 ## License
 

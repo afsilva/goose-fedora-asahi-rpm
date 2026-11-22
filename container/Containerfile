@@ -19,14 +19,10 @@ RUN dnf -y update && dnf -y install \
     libappindicator-gtk3-devel \
     rpm-build rpmdevtools rpmlint \
     fakeroot dpkg dpkg-dev \
-    ruby ruby-devel rubygems \
     && dnf clean all
 
 # Install pnpm explicitly (corepack is not always available in Fedora nodejs packages)
 RUN npm install -g pnpm@10.30.0
-
-# FPM for robust RPM creation from prebuilt app directories
-RUN gem install --no-document fpm
 
 # non-root user to avoid root-owned artifacts on mounted workspace
 RUN groupadd -g ${GROUP_ID} ${USERNAME} || true && \

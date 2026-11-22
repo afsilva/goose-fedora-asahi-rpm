@@ -4,6 +4,8 @@
 
 # Build outputs
 /dist/*.rpm
+/dist/SHA256SUMS
+/dist/BUILD-PROVENANCE.txt
 
 # Keep folder placeholders
 !dist/.gitkeep

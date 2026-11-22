@@ -76,6 +76,7 @@ require_cmd() {
 log "Validating host prerequisites"
 require_cmd git
 require_cmd podman
+require_cmd shasum
 
 mkdir -p "${SOURCE_ROOT}" "${DIST_DIR}"
 
@@ -153,6 +154,10 @@ if [[ -z "${DESKTOP_VERSION}" ]]; then
   exit 1
 fi
 
+GOOSE_COMMIT="$(git -C "${GOOSE_DIR}" rev-parse HEAD)"
+GOOSE_COMMIT_SHORT="$(git -C "${GOOSE_DIR}" rev-parse --short=12 HEAD)"
+log "Building Goose Desktop ${DESKTOP_VERSION} from commit ${GOOSE_COMMIT_SHORT}"
+
 MAX_ITERATION=0
 for rpm in "${DIST_DIR}/goose-desktop-${DESKTOP_VERSION}-"*.fc"${FEDORA_VERSION}".aarch64.rpm; do
   [[ -e "$rpm" ]] || continue
@@ -188,6 +193,7 @@ podman run --rm -i \
   -e npm_config_jobs="${BUILD_JOBS}" \
   -e npm_config_loglevel=warn \
   -e RPM_ITERATION="${RPM_ITERATION}" \
+  -e EXPECTED_DESKTOP_VERSION="${DESKTOP_VERSION}" \
   -v "${WORKTREE_DIR}":/work/goose:Z \
   -v "${DIST_DIR}":/work/dist:Z \
   -w /work/goose \
@@ -228,6 +234,10 @@ podman run --rm -i \
     fi
 
     APP_VERSION=$(node -p "require(\"./package.json\").version")
+    if [[ "${APP_VERSION}" != "${EXPECTED_DESKTOP_VERSION}" ]]; then
+      echo "Desktop version changed during build: expected ${EXPECTED_DESKTOP_VERSION}, got ${APP_VERSION}"
+      exit 1
+    fi
 
     mkdir -p out/make/rpm/aarch64
 
@@ -356,6 +366,23 @@ while IFS= read -r rpm; do
 done < "${RPM_LIST_FILE}"
 
 rm -f "${RPM_LIST_FILE}"
+
+log "Generating checksums and build provenance"
+CHECKSUM_FILE="${DIST_DIR}/SHA256SUMS"
+PROVENANCE_FILE="${DIST_DIR}/BUILD-PROVENANCE.txt"
+(
+  cd "${DIST_DIR}"
+  shasum -a 256 goose-desktop-"${DESKTOP_VERSION}"-*.fc"${FEDORA_VERSION}".aarch64.rpm > "$(basename "${CHECKSUM_FILE}")"
+)
+cat > "${PROVENANCE_FILE}" <<EOF
+Goose Desktop version: ${DESKTOP_VERSION}
+Goose source repository: ${REPO_URL}
+Goose source commit: ${GOOSE_COMMIT}
+Fedora builder version: ${FEDORA_VERSION}
+Architecture: aarch64
+RPM release iteration: ${RPM_ITERATION}
+Build timestamp (UTC): $(date -u "+%Y-%m-%dT%H:%M:%SZ")
+EOF
 
 log "Cleaning temporary build worktree"
 git -C "${GOOSE_DIR}" worktree remove --force "${WORKTREE_DIR}" >/dev/null || true
